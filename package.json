@@ -21,7 +21,9 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.5",
-    "fastify": "^4.26.2"
+    "fastify": "^4.26.2",
+    "decimal.js": "^10.4.3",
+    "rentabilidad-alquiler-engine": "file:../rentabilidad-alquiler-engine"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

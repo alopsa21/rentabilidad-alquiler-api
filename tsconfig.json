@@ -17,8 +17,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": "."
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "node_modules/rentabilidad-alquiler-engine/dist/index.d.ts"],
   "exclude": ["node_modules", "dist", "test"]
 }
