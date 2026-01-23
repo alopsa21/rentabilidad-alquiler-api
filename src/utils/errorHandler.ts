@@ -1,31 +1,53 @@
 import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
+import { logger } from './logger';
 
 /**
- * Tipos de errores que puede lanzar la API
+ * Respuesta de error de validación.
+ * 
+ * Se devuelve cuando el request no cumple con el schema esperado.
  */
 export interface ErrorValidacion {
+  /** Tipo de error */
   status: 'error-validacion';
+  /** Mensaje descriptivo del error */
   message: string;
+  /** Detalles de los errores de validación (opcional) */
   errores?: unknown[];
 }
 
+/**
+ * Respuesta de error interno del servidor.
+ * 
+ * Se devuelve cuando ocurre un error inesperado en el procesamiento.
+ */
 export interface ErrorInterno {
+  /** Tipo de error */
   status: 'error-interno';
+  /** Mensaje descriptivo del error */
   message: string;
 }
 
+/**
+ * Tipo unión de todos los errores posibles de la API.
+ */
 export type ApiError = ErrorValidacion | ErrorInterno;
 
 /**
- * Determina si un error es de validación Zod
+ * Determina si un error es de validación Zod.
+ * 
+ * @param error - Error a verificar
+ * @returns true si es un ZodError
  */
 export function esErrorZod(error: unknown): error is ZodError {
   return error instanceof Error && 'issues' in error;
 }
 
 /**
- * Determina si un error es del motor (comunidad no válida, etc.)
+ * Determina si un error proviene del motor (comunidad no válida, etc.).
+ * 
+ * @param error - Error a verificar
+ * @returns true si es un error del motor
  */
 export function esErrorMotor(error: unknown): boolean {
   if (!(error instanceof Error)) {
@@ -40,7 +62,11 @@ export function esErrorMotor(error: unknown): boolean {
 }
 
 /**
- * Crea una respuesta de error de validación
+ * Crea una respuesta de error de validación.
+ * 
+ * @param message - Mensaje descriptivo del error
+ * @param errores - Detalles opcionales de los errores
+ * @returns Objeto de error de validación
  */
 export function crearErrorValidacion(
   message: string,
@@ -54,7 +80,10 @@ export function crearErrorValidacion(
 }
 
 /**
- * Crea una respuesta de error interno
+ * Crea una respuesta de error interno.
+ * 
+ * @param message - Mensaje descriptivo del error
+ * @returns Objeto de error interno
  */
 export function crearErrorInterno(message: string): ErrorInterno {
   return {
@@ -64,8 +93,14 @@ export function crearErrorInterno(message: string): ErrorInterno {
 }
 
 /**
- * Error handler centralizado de Fastify
- * Maneja todos los errores que ocurren en las rutas
+ * Error handler centralizado de Fastify.
+ * 
+ * Maneja todos los errores que ocurren en las rutas y devuelve
+ * respuestas HTTP apropiadas según el tipo de error.
+ * 
+ * @param error - Error capturado por Fastify
+ * @param request - Request de Fastify
+ * @param reply - Reply de Fastify para enviar la respuesta
  */
 export function errorHandler(
   error: FastifyError,
@@ -73,7 +108,32 @@ export function errorHandler(
   reply: FastifyReply
 ): void {
   // Log del error para debugging
-  request.log.error(error);
+  logger.error({
+    err: error,
+    url: request.url,
+    method: request.method,
+  }, 'Error en request');
+
+  // Error de validación de Fastify (FST_ERR_VALIDATION)
+  if (error.validation || error.code === 'FST_ERR_VALIDATION') {
+    let errores: unknown[] | undefined;
+    
+    // Intentar parsear el mensaje como JSON si contiene errores de validación
+    try {
+      const parsed = JSON.parse(error.message);
+      if (Array.isArray(parsed)) {
+        errores = parsed;
+      }
+    } catch {
+      // Si no es JSON, usar el mensaje tal cual
+    }
+
+    reply.code(400).send(crearErrorValidacion(
+      'El body del request no es válido',
+      errores || error.validation
+    ));
+    return;
+  }
 
   // Error de validación Zod (puede venir como error original)
   const errorOriginal = error.cause || error;
