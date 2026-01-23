@@ -1,0 +1,228 @@
+{
+	"info": {
+		"_postman_id": "rentabilidad-alquiler-api-v1",
+		"name": "Rentabilidad Alquiler API",
+		"description": "Colección de endpoints para la API de rentabilidad de alquiler",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Healthcheck",
+			"item": [
+				{
+					"name": "GET /health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Endpoint de healthcheck para verificar que el servidor está funcionando"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Testing - Motor Integration",
+			"item": [
+				{
+					"name": "GET /test-motor",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/test-motor",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"test-motor"
+							]
+						},
+						"description": "Endpoint temporal para probar la integración con el motor. Usa valores hardcodeados."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Rentabilidad",
+			"item": [
+				{
+					"name": "POST /rentabilidad - Sin hipoteca",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precioCompra\": 150000,\n  \"comunidadAutonoma\": \"Comunidad de Madrid\",\n  \"alquilerMensual\": 800\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rentabilidad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rentabilidad"
+							]
+						},
+						"description": "Endpoint principal para calcular rentabilidad. Este request es válido sin hipoteca y debe devolver 200 con el resultado completo."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /rentabilidad - Con hipoteca",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precioCompra\": 200000,\n  \"comunidadAutonoma\": \"Cataluña\",\n  \"alquilerMensual\": 1000,\n  \"hayHipoteca\": true,\n  \"importeHipoteca\": 150000,\n  \"tipoInteres\": 2.5,\n  \"plazoHipoteca\": 30\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rentabilidad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rentabilidad"
+							]
+						},
+						"description": "Request válido con datos de hipoteca. Incluye todos los campos opcionales de financiación."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /rentabilidad - Request inválido (campos faltantes)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precioCompra\": 150000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rentabilidad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rentabilidad"
+							]
+						},
+						"description": "Request inválido que debe devolver 400 porque faltan campos obligatorios (comunidadAutonoma, alquilerMensual)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /rentabilidad - Request inválido (tipo incorrecto)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precioCompra\": \"invalid\",\n  \"comunidadAutonoma\": \"Comunidad de Madrid\",\n  \"alquilerMensual\": 800\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rentabilidad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rentabilidad"
+							]
+						},
+						"description": "Request inválido que debe devolver 400 porque precioCompra no es un número válido."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /rentabilidad - Request inválido (comunidad no válida)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precioCompra\": 150000,\n  \"comunidadAutonoma\": \"Madrid\",\n  \"alquilerMensual\": 800\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rentabilidad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rentabilidad"
+							]
+						},
+						"description": "Request inválido que debe devolver 400 porque la comunidad autónoma 'Madrid' no es válida. Debe usarse 'Comunidad de Madrid'."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	]
+}

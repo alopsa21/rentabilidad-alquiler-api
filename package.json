@@ -23,7 +23,8 @@
     "dotenv": "^16.4.5",
     "fastify": "^4.26.2",
     "decimal.js": "^10.4.3",
-    "rentabilidad-alquiler-engine": "file:../rentabilidad-alquiler-engine"
+    "rentabilidad-alquiler-engine": "file:../rentabilidad-alquiler-engine",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.11.5",

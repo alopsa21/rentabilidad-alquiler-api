@@ -6,6 +6,7 @@ import {
   type MotorInput,
   type MotorOutput,
 } from 'rentabilidad-alquiler-engine';
+import { registrarRutasRentabilidad } from './routes/rentabilidad';
 
 const server = Fastify({
   logger: true,
@@ -34,6 +35,9 @@ server.get('/test-motor', async () => {
     rentabilidadNeta: resultado.rentabilidadNeta.toString(),
   };
 });
+
+// Registrar rutas de rentabilidad
+registrarRutasRentabilidad(server);
 
 // Iniciar el servidor
 const start = async () => {
