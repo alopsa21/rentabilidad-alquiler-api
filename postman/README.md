@@ -29,8 +29,6 @@ Puedes cambiarla en Postman:
 - **POST /rentabilidad - Request inválido (campos faltantes)** - Prueba error 400
 - **POST /rentabilidad - Request inválido (tipo incorrecto)** - Prueba error 400
 
-### Testing - Motor Integration
-- **GET /test-motor** - Prueba la integración con el motor (valores hardcodeados)
 
 ## Notas
 

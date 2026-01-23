@@ -1,46 +1,47 @@
 import 'dotenv/config';
-import Fastify from 'fastify';
-import { Decimal } from 'decimal.js';
-import {
-  calcularRentabilidad,
-  type MotorInput,
-  type MotorOutput,
-} from 'rentabilidad-alquiler-engine';
+import Fastify, { type FastifyInstance } from 'fastify';
 import { registrarRutasRentabilidad } from './routes/rentabilidad';
 
-const server = Fastify({
-  logger: true,
-});
+/**
+ * Crea y configura el servidor Fastify.
+ * No arranca el servidor, solo lo configura.
+ * 
+ * Útil para tests donde queremos inyectar el servidor sin arrancarlo.
+ */
+export function crearServidor(): FastifyInstance {
+  const server = Fastify({
+    logger: false, // Desactivar logger en tests
+  });
 
-// Endpoint de healthcheck
-server.get('/health', async () => {
-  return { status: 'ok' };
-});
+  // Endpoint de healthcheck
+  server.get('/health', async () => {
+    return { status: 'ok' };
+  });
 
-// Endpoint temporal para probar integración con el motor
-server.get('/test-motor', async () => {
-  const input: MotorInput = {
-    precioCompra: new Decimal('150000'),
-    comunidadAutonoma: 'Comunidad de Madrid',
-    alquilerMensual: new Decimal('800'),
+  // Registrar rutas de rentabilidad
+  registrarRutasRentabilidad(server);
+
+  return server;
+}
+
+/**
+ * Arranca el servidor en modo producción.
+ * Solo se debe llamar cuando se ejecuta el servidor directamente.
+ */
+export async function arrancarServidor() {
+  const server = crearServidor();
+
+  // Configurar logger para producción
+  server.log = {
+    ...server.log,
+    info: console.log,
+    error: console.error,
+    warn: console.warn,
+    debug: console.log,
+    fatal: console.error,
+    trace: console.log,
   };
 
-  const resultado: MotorOutput = calcularRentabilidad(input);
-
-  // Devolvemos una versión serializada (string) de algunos campos
-  return {
-    totalCompra: resultado.totalCompra.toString(),
-    ingresosAnuales: resultado.ingresosAnuales.toString(),
-    rentabilidadBruta: resultado.rentabilidadBruta.toString(),
-    rentabilidadNeta: resultado.rentabilidadNeta.toString(),
-  };
-});
-
-// Registrar rutas de rentabilidad
-registrarRutasRentabilidad(server);
-
-// Iniciar el servidor
-const start = async () => {
   try {
     const port = Number(process.env.PORT) || 3000;
     const host = process.env.HOST || '0.0.0.0';
@@ -51,6 +52,4 @@ const start = async () => {
     server.log.error(err);
     process.exit(1);
   }
-};
-
-start();
+}

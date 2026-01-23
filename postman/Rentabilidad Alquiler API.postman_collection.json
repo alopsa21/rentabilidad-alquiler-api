@@ -30,29 +30,6 @@
 			]
 		},
 		{
-			"name": "Testing - Motor Integration",
-			"item": [
-				{
-					"name": "GET /test-motor",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/test-motor",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"test-motor"
-							]
-						},
-						"description": "Endpoint temporal para probar la integración con el motor. Usa valores hardcodeados."
-					},
-					"response": []
-				}
-			]
-		},
-		{
 			"name": "Rentabilidad",
 			"item": [
 				{
