@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { registrarRutasRentabilidad } from './routes/rentabilidad';
+import { errorHandler } from './utils/errorHandler';
 
 /**
  * Crea y configura el servidor Fastify.
@@ -12,6 +13,9 @@ export function crearServidor(): FastifyInstance {
   const server = Fastify({
     logger: false, // Desactivar logger en tests
   });
+
+  // Error handler centralizado
+  server.setErrorHandler(errorHandler);
 
   // Endpoint de healthcheck
   server.get('/health', async () => {
