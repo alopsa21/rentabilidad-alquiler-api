@@ -6,7 +6,7 @@ describe('POST /rentabilidad', () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
-    app = crearServidor();
+    app = await crearServidor();
     await app.ready();
   });
 

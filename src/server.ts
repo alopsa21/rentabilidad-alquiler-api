@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import Fastify, { type FastifyInstance } from 'fastify';
+import cors from '@fastify/cors';
 import { registrarRutasRentabilidad } from './routes/rentabilidad';
 import { errorHandler } from './utils/errorHandler';
 import { crearCompiladorZod } from './utils/validator';
@@ -14,9 +15,14 @@ import { config } from './config';
  * 
  * @returns Instancia configurada de Fastify
  */
-export function crearServidor(): FastifyInstance {
+export async function crearServidor(): Promise<FastifyInstance> {
   const server = Fastify({
     logger: config.env === 'test' ? false : (logger as any), // Desactivar logger en tests
+  });
+
+  // CORS: permitir peticiones desde el frontend (ej. http://localhost:5173)
+  await server.register(cors, {
+    origin: true, // en desarrollo refleja el origen de la petición; en producción conviene restringir
   });
 
   // Configurar compilador de validación Zod
@@ -43,7 +49,7 @@ export function crearServidor(): FastifyInstance {
  * @throws Error si el servidor no puede arrancar
  */
 export async function arrancarServidor(): Promise<void> {
-  const server = crearServidor();
+  const server = await crearServidor();
 
   try {
     await server.listen({ 
