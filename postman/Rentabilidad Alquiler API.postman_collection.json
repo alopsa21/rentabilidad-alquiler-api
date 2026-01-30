@@ -191,6 +191,38 @@
 						"description": "Request inválido que debe devolver 400 porque la comunidad autónoma 'Madrid' no es válida. Debe usarse 'Comunidad de Madrid'."
 					},
 					"response": []
+				},
+				{
+					"name": "POST /rentabilidad - Completo con opcionales",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precioCompra\": 180000,\n  \"comunidadAutonoma\": \"Comunidad de Madrid\",\n  \"alquilerMensual\": 900,\n  \"notaria\": 1500,\n  \"registro\": 800,\n  \"comisionInmobiliaria\": 3000,\n  \"otrosGastosCompra\": 1200,\n  \"reforma\": 10000,\n  \"tasacion\": 400,\n  \"gestoriaBanco\": 350,\n  \"seguroVidaHipoteca\": 250,\n  \"comunidadAnual\": 600,\n  \"ibi\": 450,\n  \"seguroHogar\": 300,\n  \"seguroImpago\": 250,\n  \"basura\": 120,\n  \"agua\": 240,\n  \"electricidad\": 480,\n  \"gas\": 360,\n  \"internet\": 360,\n  \"hayHipoteca\": true,\n  \"importeHipoteca\": 130000,\n  \"tipoInteres\": 2.3,\n  \"plazoHipoteca\": 25\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/rentabilidad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rentabilidad"
+							]
+						},
+						"description": "Request válido que rellena también varios campos opcionales de compra, gastos anuales y financiación. Útil para probar un caso más completo."
+					},
+					"response": []
 				}
 			]
 		}

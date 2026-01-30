@@ -21,16 +21,17 @@ Puedes cambiarla en Postman:
 ## Endpoints incluidos
 
 ### Healthcheck
-- **GET /health** - Verifica que el servidor está funcionando
+- **GET /health** - Verifica que el servidor está funcionando. Respuesta: `{ "status": "ok" }`
 
-### Rentabilidad (Endpoint principal)
-- **POST /rentabilidad - Sin hipoteca** - Calcula rentabilidad sin financiación
-- **POST /rentabilidad - Con hipoteca** - Calcula rentabilidad con datos de hipoteca
-- **POST /rentabilidad - Request inválido (campos faltantes)** - Prueba error 400
-- **POST /rentabilidad - Request inválido (tipo incorrecto)** - Prueba error 400
-
+### Rentabilidad (POST /rentabilidad)
+- **POST /rentabilidad - Sin hipoteca** - Body mínimo válido (precioCompra, comunidadAutonoma, alquilerMensual). Respuesta 200 con métricas.
+- **POST /rentabilidad - Con hipoteca** - Incluye hayHipoteca, importeHipoteca, tipoInteres, plazoHipoteca. Respuesta 200.
+- **POST /rentabilidad - Completo con opcionales** - Ejemplo con gastos de compra, gastos anuales y hipoteca. Respuesta 200.
+- **POST /rentabilidad - Request inválido (campos faltantes)** - Solo precioCompra. Respuesta 400.
+- **POST /rentabilidad - Request inválido (tipo incorrecto)** - precioCompra no numérico. Respuesta 400.
+- **POST /rentabilidad - Request inválido (comunidad no válida)** - comunidadAutonoma "Madrid" (debe ser "Comunidad de Madrid"). Respuesta 400.
 
 ## Notas
 
-- Esta colección se actualizará conforme se añadan nuevos endpoints
-- Los endpoints marcados como "Testing" son temporales y se eliminarán cuando se implementen los endpoints definitivos
+- La API valida el body con el schema del motor; los valores monetarios aceptan number o string.
+- Comunidades válidas: ver mensaje de error 400 si se envía una no soportada (ej. "Comunidad de Madrid", "Cataluña", etc.).
