@@ -20,20 +20,3 @@ export const logger = pino({
       }
     : undefined,
 });
-
-/**
- * Crea un logger con contexto adicional.
- * 
- * @param context - Contexto adicional para los logs (ej: { requestId: 'abc123' })
- * @returns Logger con contexto
- * 
- * @example
- * ```ts
- * const requestLogger = loggerConContexto({ requestId: 'req-123' });
- * requestLogger.info('Procesando request');
- * // Log: { level: 30, msg: 'Procesando request', requestId: 'req-123' }
- * ```
- */
-export function loggerConContexto(context: Record<string, unknown>) {
-  return logger.child(context);
-}
