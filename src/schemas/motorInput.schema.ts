@@ -27,11 +27,11 @@ const decimalSchema = z.union([
 ]).transform((val) => new Decimal(val));
 
 /**
- * Schema para comunidad autónoma.
+ * Schema para código de comunidad autónoma.
  * 
- * Debe ser un string no vacío.
+ * Debe ser un número entero entre 1 y 19 (CODAUTO oficial).
  */
-const comunidadAutonomaSchema = z.string().min(1, 'La comunidad autónoma es obligatoria');
+const codigoComunidadAutonomaSchema = z.number().int().min(1).max(19);
 
 /**
  * Schema para valores booleanos opcionales.
@@ -54,7 +54,7 @@ const plazoHipotecaSchema = z.number().int().positive().optional();
 export const motorInputSchema = z.object({
   // Campos obligatorios
   precioCompra: decimalSchema,
-  comunidadAutonoma: comunidadAutonomaSchema,
+  codigoComunidadAutonoma: codigoComunidadAutonomaSchema,
   alquilerMensual: decimalSchema,
 
   // Campos opcionales de compra

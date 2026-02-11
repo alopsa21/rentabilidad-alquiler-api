@@ -25,7 +25,7 @@ interface RentabilidadRequest {
  * POST /rentabilidad
  * {
  *   "precioCompra": 150000,
- *   "comunidadAutonoma": "Comunidad de Madrid",
+ *   "codigoComunidadAutonoma": 13,
  *   "alquilerMensual": 800
  * }
  * ```
