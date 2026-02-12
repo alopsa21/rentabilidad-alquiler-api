@@ -277,6 +277,20 @@ export function obtenerTodasLasCiudades(): Ciudad[] {
 }
 
 /**
+ * Obtiene todas las ciudades (nombres) de una comunidad autónoma por CODAUTO.
+ * Útil para desplegables en frontend.
+ */
+export function obtenerCiudadesPorCodauto(codauto: number): string[] {
+  if (!Number.isFinite(codauto)) return [];
+  const nombres = ciudades
+    .filter((c) => c.codauto === codauto)
+    .map((c) => c.nombre)
+    .filter(Boolean);
+  // Ordenar para UX consistente
+  return nombres.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+}
+
+/**
  * Exportar función de normalización para usar en extractores
  */
 export { normalizar };

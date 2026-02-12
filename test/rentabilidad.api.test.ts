@@ -21,7 +21,7 @@ describe('POST /rentabilidad', () => {
         url: '/rentabilidad',
         payload: {
           precioCompra: 150000,
-          comunidadAutonoma: 'Comunidad de Madrid',
+          codigoComunidadAutonoma: 13, // Comunidad de Madrid
           alquilerMensual: 800,
         },
       });
@@ -60,7 +60,7 @@ describe('POST /rentabilidad', () => {
         url: '/rentabilidad',
         payload: {
           precioCompra: 200000,
-          comunidadAutonoma: 'Cataluña',
+          codigoComunidadAutonoma: 9, // Cataluña
           alquilerMensual: 1000,
           hayHipoteca: true,
           importeHipoteca: 150000,
@@ -90,7 +90,7 @@ describe('POST /rentabilidad', () => {
         url: '/rentabilidad',
         payload: {
           precioCompra: '150000',
-          comunidadAutonoma: 'Comunidad de Madrid',
+          codigoComunidadAutonoma: 13, // Comunidad de Madrid
           alquilerMensual: '800',
         },
       });
@@ -128,7 +128,7 @@ describe('POST /rentabilidad', () => {
         url: '/rentabilidad',
         payload: {
           precioCompra: 'invalid',
-          comunidadAutonoma: 'Comunidad de Madrid',
+          codigoComunidadAutonoma: 13, // Comunidad de Madrid
           alquilerMensual: 800,
         },
       });
@@ -145,7 +145,7 @@ describe('POST /rentabilidad', () => {
         url: '/rentabilidad',
         payload: {
           precioCompra: 150000,
-          comunidadAutonoma: 'Madrid', // Nombre incorrecto
+          codigoComunidadAutonoma: 99, // Código inválido (fuera del rango 1-19)
           alquilerMensual: 800,
         },
       });
@@ -154,7 +154,14 @@ describe('POST /rentabilidad', () => {
 
       const body = JSON.parse(response.body);
       expect(body).toHaveProperty('status', 'error-validacion');
-      expect(body.message.toLowerCase()).toContain('comunidad autónoma');
+      // Verificar que hay un error relacionado con codigoComunidadAutonoma en el array de errores
+      expect(body.errores).toBeDefined();
+      expect(Array.isArray(body.errores)).toBe(true);
+      const errorCodigo = body.errores.find((e: any) => 
+        e.instancePath === 'codigoComunidadAutonoma' || 
+        e.path?.includes('codigoComunidadAutonoma')
+      );
+      expect(errorCodigo).toBeDefined();
     });
 
     it('debe devolver status 400 cuando el body está vacío', async () => {

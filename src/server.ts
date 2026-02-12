@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import { registrarRutasRentabilidad } from './routes/rentabilidad';
 import { registrarRutasAutofill } from './routes/autofill';
+import { registrarRutasTerritorio } from './routes/territorio';
 import { errorHandler } from './utils/errorHandler';
 import { crearCompiladorZod } from './utils/validator';
 import { logger } from './utils/logger';
@@ -42,6 +43,9 @@ export async function crearServidor(): Promise<FastifyInstance> {
 
   // Registrar rutas de autofill
   registrarRutasAutofill(server);
+
+  // Rutas auxiliares (territorio, etc.)
+  registrarRutasTerritorio(server);
 
   return server;
 }
