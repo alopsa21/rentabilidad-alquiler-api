@@ -338,6 +338,27 @@ export function obtenerCiudadesPorCodauto(codauto: number): string[] {
 }
 
 /**
+ * Busca una ciudad por nombre y devuelve su información completa.
+ * Útil para verificar si una ciudad existe y obtener su codauto y cpro.
+ * 
+ * @param nombreCiudad - Nombre de la ciudad a buscar
+ * @returns Objeto Ciudad con codauto, cpro y nombre, o null si no se encuentra
+ */
+export function obtenerCiudadInfo(nombreCiudad: string): Ciudad | null {
+  const ciudadNorm = normalizar(nombreCiudad);
+  const exact = ciudadesNormalizadas.get(ciudadNorm);
+  if (exact) return exact;
+
+  // Fallback: búsqueda parcial
+  for (const [normNombre, ciudad] of ciudadesNormalizadas) {
+    if (normNombre.includes(ciudadNorm) || ciudadNorm.includes(normNombre)) {
+      return ciudad;
+    }
+  }
+  return null;
+}
+
+/**
  * Exportar función de normalización para usar en extractores
  */
 export { normalizar };
