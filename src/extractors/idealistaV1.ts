@@ -5,7 +5,7 @@
  * Best-effort: si falla cualquier campo, devuelve null.
  */
 
-import { buscarCodigoComunidadPorCiudad, obtenerTodasLasCiudades, normalizar } from "../data/territorioEspanol.js";
+import { buscarCodigoComunidadPorCiudad, obtenerCiudadInfo, normalizar } from "../data/territorioEspanol.js";
 
 export interface IdealistaAutofill {
   buyPrice: number | null;
@@ -14,6 +14,12 @@ export interface IdealistaAutofill {
   banos: number | null;
   ciudad: string | null;
   codigoComunidadAutonoma: number | null;
+  /**
+   * Alquiler mensual estimado (mercado) en €/mes.
+   * Se calcula automáticamente desde informes Idealista cuando hay ciudad, m² y comunidad.
+   * Fórmula: sqm * rentEurPerSqm (redondeado)
+   */
+  estimatedRent?: number | null;
   source: "idealista:v1";
 }
 
@@ -177,115 +183,28 @@ export function extractIdealistaV1(html: string): IdealistaAutofill {
     }
   }
 
-  // Ciudad: buscar en el título y verificar en la lista de ciudades
+  // Ciudad: extraer desde el título (patrón: última coma antes de &#8212;)
   if (ciudad === null) {
-    // 1. Extraer el título
     const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
     if (titleMatch) {
       const titulo = titleMatch[1];
-      const tituloNormalizado = normalizar(titulo);
       
-      // 2. Dividir el título en palabras
-      const palabrasTitulo = tituloNormalizado.split(/[\s,\-\u2014]+/).filter(p => p.length >= 3);
+      // Buscar patrón: texto entre la última coma y &#8212; (guión largo HTML entity)
+      // Ejemplo: "Piso en venta en Avenida Paraguay, Playa de Poniente, Benidorm &#8212; idealista"
+      // Resultado: "Benidorm"
+      const ciudadMatch = titulo.match(/,\s*([^,]+?)\s*&#8212;/);
       
-      // 3. Buscar cuáles palabras del título son ciudades conocidas
-      const todasLasCiudades = obtenerTodasLasCiudades();
-      const ciudadesCandidatas: Array<{ nombre: string; palabraMatch: string; matchCompleto: boolean }> = [];
-      
-      // Palabras genéricas de inmobiliaria que debemos ignorar
-      const palabrasInmobiliarias = [
-        'casa', 'piso', 'venta', 'alquiler', 'chalet', 'apartamento', 'duplex',
-        'atico', 'estudio', 'loft', 'villa', 'finca', 'local', 'oficina',
-        'garaje', 'parking', 'trastero', 'terreno', 'solar', 'nave', 'pueblo',
-        'nueva', 'nuevo', 'obra', 'segunda', 'mano', 'lujo', 'centro', 'adosado',
-        'independiente', 'pareado', 'plantas', 'planta', 'baja', 'reformar', 'rustica'
-      ];
-      
-      // Artículos y preposiciones que debemos ignorar
-      const articulosYPreposiciones = [
-        'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas',
-        'de', 'del', 'al', 'en', 'con', 'por', 'para', 'sobre'
-      ];
-      
-      // Primero: buscar ciudades cuyo nombre COMPLETO aparece en el título (mayor prioridad)
-      for (const ciudadData of todasLasCiudades) {
-        const nombreNormalizado = normalizar(ciudadData.nombre);
-        // Quitar artículos y comas del nombre de la ciudad para la comparación
-        const nombreLimpio = nombreNormalizado.replace(/,\s*(el|la|los|las)$/i, '').trim();
+      if (ciudadMatch) {
+        const ciudadExtraida = ciudadMatch[1].trim();
         
-        // Buscar el nombre completo en el título (con word boundaries)
-        const regex = new RegExp(
-          `(?<![a-z0-9])${nombreLimpio.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z0-9])`,
-          'i'
-        );
+        // Verificar que la ciudad extraída está en nuestra lista de ciudades
+        const ciudadInfo = obtenerCiudadInfo(ciudadExtraida);
         
-        if (regex.test(tituloNormalizado)) {
-          ciudadesCandidatas.push({ 
-            nombre: ciudadData.nombre, 
-            palabraMatch: nombreLimpio,
-            matchCompleto: true
-          });
+        if (ciudadInfo) {
+          // Usar el nombre exacto de la ciudad encontrada (puede tener mayúsculas/acentos correctos)
+          ciudad = ciudadInfo.nombre;
         }
-      }
-      
-      // Segundo: si no hay matches completos, buscar por palabras individuales
-      if (ciudadesCandidatas.length === 0) {
-        for (const palabra of palabrasTitulo) {
-          // Ignorar palabras inmobiliarias genéricas y artículos
-          if (palabrasInmobiliarias.includes(palabra) || articulosYPreposiciones.includes(palabra)) continue;
-          
-          // Solo buscar palabras significativas (>= 5 caracteres)
-          if (palabra.length < 5) continue;
-          
-          // Buscar si esta palabra coincide con alguna ciudad o palabra dentro de un nombre de ciudad
-          for (const ciudadData of todasLasCiudades) {
-            const nombreNormalizado = normalizar(ciudadData.nombre);
-            const palabrasCiudad = nombreNormalizado.split(/[,\s]+/);
-            
-            // Coincidencia de palabra dentro del nombre de ciudad
-            if (palabrasCiudad.includes(palabra)) {
-              ciudadesCandidatas.push({ 
-                nombre: ciudadData.nombre, 
-                palabraMatch: palabra,
-                matchCompleto: false
-              });
-              break; // Solo agregar una vez por palabra del título
-            }
-          }
-        }
-      }
-      
-      // 4. Si hay ciudades candidatas, elegir la que más aparece en el HTML
-      if (ciudadesCandidatas.length > 0) {
-        const htmlNormalizado = normalizar(html);
-        const ocurrencias = new Map<string, number>();
-        
-        for (const candidata of ciudadesCandidatas) {
-          const palabraMatch = candidata.palabraMatch;
-          const regex = new RegExp(
-            `(?<![a-z0-9])${palabraMatch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z0-9])`,
-            'gi'
-          );
-          const matches = htmlNormalizado.match(regex);
-          const count = matches ? matches.length : 0;
-          
-          if (!ocurrencias.has(candidata.nombre) || ocurrencias.get(candidata.nombre)! < count) {
-            ocurrencias.set(candidata.nombre, count);
-          }
-        }
-        
-        // Tomar la ciudad con más ocurrencias
-        if (ocurrencias.size > 0) {
-          const ciudadesOrdenadas = Array.from(ocurrencias.entries())
-            .sort((a, b) => {
-              // Primero por ocurrencias
-              if (b[1] !== a[1]) return b[1] - a[1];
-              // En empate, nombre más largo (más específico)
-              return b[0].length - a[0].length;
-            });
-          
-          ciudad = ciudadesOrdenadas[0][0];
-        }
+        // Si no está en la lista, ciudad permanece null
       }
     }
   }
