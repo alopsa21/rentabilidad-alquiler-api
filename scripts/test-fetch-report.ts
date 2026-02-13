@@ -1,51 +1,61 @@
 #!/usr/bin/env tsx
 /**
- * Script para probar el fetch del HTML del informe de Idealista.
- * 
+ * Script para comprobar el fetch del informe de Idealista (precio €/m²).
+ *
+ * Llama a la URL del informe, extrae el precio por m² y comprueba si coincide con el esperado.
+ *
  * Uso:
- *   npm run script:test-fetch-report -- <ciudad> <codauto> <cpro>
- * 
- * Ejemplo:
- *   npm run script:test-fetch-report -- Dénia 10 3
+ *   npm run script:test-fetch-report -- <community_slug> <province_slug> <city_slug> <precio_eur_m2>
+ *   npm run script:test-fetch-report -- --verbose <community_slug> <province_slug> <city_slug> <precio_eur_m2>
+ *
+ * Ejemplo (Dénia):
+ *   npm run script:test-fetch-report -- comunitat-valenciana alicante-alacant denia 12.5
+ *
+ * URL que se llama:
+ *   https://www.idealista.com/sala-de-prensa/informes-precio-vivienda/alquiler/{community}/{province}/{city}/
  */
+
+// Verbose por defecto: mostrar request (URL, headers) a Idealista
+process.env.DEBUG = '1';
 
 import { getCookiesForDomain } from '../src/utils/cookieJar';
 import { fetchIdealistaHtml } from '../src/utils/fetchIdealistaHtml';
-import { getCommunitySlug, getProvinceSlug, getCitySlug } from '../src/utils/slugify';
-import { obtenerNombreComunidad, obtenerNombreProvincia } from '../src/data/territorioEspanol';
-// Los datos de territorio se cargan automáticamente al importar el módulo
-import '../src/data/territorioEspanol';
+import { extractRentEurPerSqm } from '../src/extractors/idealistaReportV1';
 
-function parseArgs(): { city: string; codauto: number; cpro: number } | null {
-  const args = process.argv.slice(2);
-  
-  if (args.length < 3) {
+function parseArgs(): { communitySlug: string; provinceSlug: string; citySlug: string; precioEsperado: number } | null {
+  const args = process.argv.slice(2).filter((a) => a !== '--verbose');
+
+  if (args.length < 4) {
     console.error('❌ Error: Faltan parámetros');
     console.log('\nUso:');
-    console.log('  npm run script:test-fetch-report -- <ciudad> <codauto> <cpro>');
+    console.log('  npm run script:test-fetch-report -- <community_slug> <province_slug> <city_slug> <precio_eur_m2>');
     console.log('\nEjemplo:');
-    console.log('  npm run script:test-fetch-report -- Dénia 10 3');
-    console.log('\nParámetros:');
-    console.log('  ciudad  - Nombre de la ciudad (ej: Dénia)');
-    console.log('  codauto - Código de comunidad autónoma (ej: 10 = Comunitat Valenciana)');
-    console.log('  cpro    - Código de provincia (ej: 3 = Alicante)');
+    console.log('  npm run script:test-fetch-report -- comunitat-valenciana alicante-alacant denia 12.5');
+    console.log('\nParámetros (segmentos de la URL del informe):');
+    console.log('  community_slug - ej: comunitat-valenciana');
+    console.log('  province_slug  - ej: alicante-alacant');
+    console.log('  city_slug      - ej: denia');
+    console.log('  precio_eur_m2  - Precio esperado en €/m² (ej: 12.5 o 12,5)');
     return null;
   }
 
-  const [city, codautoStr, cproStr] = args;
+  const [communitySlug, provinceSlug, citySlug, precioStr] = args;
+  const precioEsperado = parseFloat(precioStr.replace(',', '.'));
+
+  if (isNaN(precioEsperado) || precioEsperado <= 0) {
+    console.error('❌ Error: El precio debe ser un número positivo (ej: 12.5)');
+    return null;
+  }
 
   return {
-    city: city.trim(),
-    codauto: parseInt(codautoStr, 10),
-    cpro: parseInt(cproStr, 10),
+    communitySlug: communitySlug.trim(),
+    provinceSlug: provinceSlug.trim(),
+    citySlug: citySlug.trim(),
+    precioEsperado,
   };
 }
 
-function buildIdealistaReportUrl(
-  communitySlug: string,
-  provinceSlug: string,
-  citySlug: string
-): string {
+function buildReportUrl(communitySlug: string, provinceSlug: string, citySlug: string): string {
   return `https://www.idealista.com/sala-de-prensa/informes-precio-vivienda/alquiler/${communitySlug}/${provinceSlug}/${citySlug}/`;
 }
 
@@ -55,87 +65,55 @@ async function main() {
     process.exit(1);
   }
 
-  const { city, codauto, cpro } = params;
+  const { communitySlug, provinceSlug, citySlug, precioEsperado } = params;
+  const reportUrl = buildReportUrl(communitySlug, provinceSlug, citySlug);
 
-  console.log('\n🧪 Testing Fetch Report Idealista');
+  console.log('\n🧪 Testing Fetch Report Idealista (precio €/m²)');
   console.log('═'.repeat(60));
-  console.log(`\n📋 Parámetros:`);
-  console.log(`   Ciudad: ${city}`);
-  console.log(`   Código Comunidad: ${codauto}`);
-  console.log(`   Código Provincia: ${cpro}`);
-
-  // Obtener nombres
-  const nombreComunidad = obtenerNombreComunidad(codauto);
-  const nombreProvincia = obtenerNombreProvincia(cpro);
-
-  if (!nombreComunidad || !nombreProvincia) {
-    console.error(`\n❌ No se encontraron nombres para codauto=${codauto}, cpro=${cpro}`);
-    process.exit(1);
-  }
-
-  console.log(`   Comunidad: ${nombreComunidad}`);
-  console.log(`   Provincia: ${nombreProvincia}`);
-
-  // Construir slugs
-  const communitySlug = getCommunitySlug(codauto, nombreComunidad);
-  const provinceSlug = getProvinceSlug(cpro, nombreProvincia);
-  const citySlug = getCitySlug(city);
-  const reportUrl = buildIdealistaReportUrl(communitySlug, provinceSlug, citySlug);
-
-  console.log(`\n🔗 URL del informe:`);
-  console.log(`   ${reportUrl}`);
-
-  console.log(`\n🔄 Haciendo fetch del HTML...`);
+  console.log('\n📋 Parámetros:');
+  console.log(`   Community: ${communitySlug}`);
+  console.log(`   Province:  ${provinceSlug}`);
+  console.log(`   City:      ${citySlug}`);
+  console.log(`   Precio esperado: ${precioEsperado} €/m²`);
+  console.log(`\n🔗 URL: ${reportUrl}`);
+  console.log('\n🔄 Haciendo fetch...');
   const startTime = Date.now();
 
   try {
-    // Mismo flujo que autofillFromUrl: cookies (cacheadas o bootstrap) + fetch unificado
     const domain = 'www.idealista.com';
     const cookies = await getCookiesForDomain(domain);
-
-    // Fetch HTML del informe con la misma util que autofill (mismas cookies y headers)
     const html = await fetchIdealistaHtml(reportUrl, cookies);
     const duration = Date.now() - startTime;
 
-    console.log(`\n✅ HTML obtenido exitosamente (${duration}ms)`);
-    console.log(`\n📊 Estadísticas:`);
-    console.log(`   Tamaño HTML: ${html.length} caracteres`);
-    console.log(`   Líneas: ${html.split('\n').length}`);
+    const precioObtenido = extractRentEurPerSqm(html);
 
-    // Buscar si contiene el patrón de precio
-    const precioMatch = html.match(/<strong>\s*([\d,]+)\s*€\/m2\s*<\/strong>/i);
-    if (precioMatch) {
-      const precio = parseFloat(precioMatch[1].replace(',', '.'));
-      console.log(`\n💰 Precio encontrado: ${precio} €/m²`);
-    } else {
-      console.log(`\n⚠️  No se encontró el patrón de precio en el HTML`);
-      console.log(`\n🔍 Buscando variaciones del patrón...`);
-      
-      // Buscar otras variaciones
-      const variaciones = [
-        /€\/m2/i,
-        /€\/m²/i,
-        /precio.*alquiler/i,
-        /alquiler.*m2/i,
-      ];
-      
-      for (const regex of variaciones) {
-        if (regex.test(html)) {
-          console.log(`   ✓ Encontrado: ${regex.source}`);
-        }
-      }
+    if (precioObtenido == null) {
+      console.log(`\n⚠️  No se pudo extraer el precio €/m² del HTML (${duration}ms)`);
+      console.log('\n' + '═'.repeat(60));
+      console.log('RESULTADO: No se encontró precio en el informe');
+      console.log('═'.repeat(60));
+      process.exit(1);
     }
 
-    // Guardar HTML en archivo para inspección (opcional)
-    const fs = await import('fs');
-    const path = await import('path');
-    const outputFile = path.join(process.cwd(), 'test-report-output.html');
-    fs.writeFileSync(outputFile, html, 'utf-8');
-    console.log(`\n💾 HTML guardado en: ${outputFile}`);
+    const coincide = Math.abs(precioObtenido - precioEsperado) < 0.01;
+    console.log(`\n💰 Precio obtenido: ${precioObtenido} €/m² (${duration}ms)`);
+    console.log(`   Esperado: ${precioEsperado} €/m²`);
 
+    console.log('\n' + '═'.repeat(60));
+    if (coincide) {
+      console.log('RESULTADO: OK (precio coincide)');
+    } else {
+      console.log(`RESULTADO: FALLO (esperado ${precioEsperado}, obtenido ${precioObtenido} €/m²)`);
+    }
+    console.log('═'.repeat(60));
+    process.exit(coincide ? 0 : 1);
   } catch (error) {
-    console.error('\n❌ Error durante el fetch:');
-    console.error(error instanceof Error ? error.message : error);
+    const msg = error instanceof Error ? error.message : String(error);
+    const is403 = msg.includes('403');
+    console.error('\n❌ Error durante el fetch:', msg);
+    console.log('\n' + '═'.repeat(60));
+    console.log(is403 ? 'RESULTADO: 403 Forbidden (informe no accesible)' : `RESULTADO: Error (${msg})`);
+    console.log('═'.repeat(60));
     process.exit(1);
   }
 }

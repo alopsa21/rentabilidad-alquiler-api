@@ -1,13 +1,19 @@
 #!/usr/bin/env tsx
 /**
  * Script de testing manual para el extractor de Idealista.
- * 
+ *
  * Uso:
- *   npm run script:test-extractor -- <id-anuncio> <sqm> <rooms> <banos> <precio> <ciudad> <codauto>
- * 
- * Ejemplo:
- *   npm run script:test-extractor -- 110169372 80 3 2 150000 Madrid 13
+ *   npm run script:test-extractor -- <id> <sqm> <rooms> <banos> <precio> <ciudad> <codauto>
+ *   npm run script:test-extractor -- --verbose <id> <sqm> <rooms> <banos> <precio> <ciudad> <codauto>
+ *
+ * Con --verbose (o DEBUG=1) se muestran los detalles de cada request a Idealista (URL, headers).
  */
+
+// Habilitar verbose de requests si se pasa --verbose
+if (process.argv.includes('--verbose')) {
+  process.env.DEBUG = '1';
+  process.argv.splice(process.argv.indexOf('--verbose'), 1);
+}
 
 import { autofillFromUrl } from '../src/autofill/autofillFromUrl';
 
@@ -22,8 +28,8 @@ interface ExpectedValues {
 }
 
 function parseArgs(): ExpectedValues | null {
-  const args = process.argv.slice(2);
-  
+  const args = process.argv.slice(2).filter((a) => a !== '--verbose');
+
   if (args.length < 7) {
     console.error('❌ Error: Faltan parámetros');
     console.log('\nUso:');
