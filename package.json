@@ -11,7 +11,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "script:test-extractor": "tsx scripts/test-extractor.ts",
+    "script:test-fetch-report": "tsx scripts/test-fetch-report.ts"
   },
   "keywords": [
     "api",

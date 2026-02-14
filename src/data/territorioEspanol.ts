@@ -60,7 +60,30 @@ function cargarDatos() {
     }
   }
   
-  // 2. Cargar ciudades
+  // 2. Cargar provincias (CPRO)
+  // Formato esperado: Código,Literal
+  // Ejemplo: 4,Almería
+  const provinciasPath = path.join(docsDir, 'provincias.csv');
+  if (fs.existsSync(provinciasPath)) {
+    const provinciasContent = fs.readFileSync(provinciasPath, 'utf-8');
+    const provinciasLines = provinciasContent.split('\n').slice(1); // saltar header
+    for (const line of provinciasLines) {
+      if (!line.trim()) continue;
+      const match = line.match(/^(\d+),(.+)$/);
+      if (!match) continue;
+      const cpro = parseInt(match[1], 10);
+      let nombre = match[2].trim();
+      if (nombre.startsWith('"') && nombre.endsWith('"')) {
+        nombre = nombre.slice(1, -1);
+      }
+      if (!isNaN(cpro) && nombre) {
+        // codauto se completará al cargar ciudades (por primera ciudad encontrada de esa provincia)
+        provincias.set(cpro, { cpro, nombre, codauto: 0 });
+      }
+    }
+  }
+
+  // 3. Cargar ciudades
   const ciudadesPath = path.join(docsDir, 'ciudades.csv');
   const ciudadesContent = fs.readFileSync(ciudadesPath, 'utf-8');
   const ciudadesLines = ciudadesContent.split('\n').slice(2); // saltar header y primera línea
@@ -83,19 +106,18 @@ function cargarDatos() {
         ciudades.push(ciudad);
         ciudadesNormalizadas.set(normalizar(nombre), ciudad);
         
-        // También guardar info de provincia si no existe
-        if (!provincias.has(cpro)) {
-          provincias.set(cpro, {
-            cpro,
-            nombre: '', // se inferirá del nombre de las ciudades si es necesario
-            codauto
-          });
+        // Completar codauto en provincias si existe, o crear provincia si falta (fallback)
+        const provincia = provincias.get(cpro);
+        if (provincia) {
+          if (!provincia.codauto) provincia.codauto = codauto;
+        } else {
+          provincias.set(cpro, { cpro, nombre: '', codauto });
         }
       }
     }
   }
   
-  console.log(`✅ Cargados: ${comunidades.size} comunidades, ${ciudades.length} ciudades`);
+  console.log(`✅ Cargados: ${comunidades.size} comunidades, ${provincias.size} provincias, ${ciudades.length} ciudades`);
 }
 
 /**
@@ -269,6 +291,31 @@ export function obtenerNombreComunidad(codigo: number): string | null {
 }
 
 /**
+ * Obtiene el nombre de una provincia por su código (CPRO).
+ */
+export function obtenerNombreProvincia(cpro: number): string | null {
+  return provincias.get(cpro)?.nombre || null;
+}
+
+/**
+ * Obtiene la info de una ciudad por su nombre (best-effort).
+ * Útil para derivar cpro/codauto desde un string de ciudad extraído.
+ */
+export function obtenerCiudadInfo(nombreCiudad: string): Ciudad | null {
+  const ciudadNorm = normalizar(nombreCiudad);
+  const exact = ciudadesNormalizadas.get(ciudadNorm);
+  if (exact) return exact;
+
+  // Fallback: búsqueda parcial
+  for (const [normNombre, ciudad] of ciudadesNormalizadas) {
+    if (normNombre.includes(ciudadNorm) || ciudadNorm.includes(normNombre)) {
+      return ciudad;
+    }
+  }
+  return null;
+}
+
+/**
  * Obtiene todas las ciudades cargadas en memoria
  * @returns Array de objetos Ciudad con codauto, cpro y nombre
  */
@@ -288,27 +335,6 @@ export function obtenerCiudadesPorCodauto(codauto: number): string[] {
     .filter(Boolean);
   // Ordenar para UX consistente
   return nombres.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-}
-
-/**
- * Busca una ciudad por nombre y devuelve su información completa.
- * Útil para verificar si una ciudad existe y obtener su codauto y cpro.
- * 
- * @param nombreCiudad - Nombre de la ciudad a buscar
- * @returns Objeto Ciudad con codauto, cpro y nombre, o null si no se encuentra
- */
-export function obtenerCiudadInfo(nombreCiudad: string): Ciudad | null {
-  const ciudadNorm = normalizar(nombreCiudad);
-  const exact = ciudadesNormalizadas.get(ciudadNorm);
-  if (exact) return exact;
-
-  // Fallback: búsqueda parcial
-  for (const [normNombre, ciudad] of ciudadesNormalizadas) {
-    if (normNombre.includes(ciudadNorm) || ciudadNorm.includes(normNombre)) {
-      return ciudad;
-    }
-  }
-  return null;
 }
 
 /**
