@@ -5,7 +5,7 @@
  * Best-effort: si falla cualquier campo, devuelve null.
  */
 
-import { buscarCodigoComunidadPorCiudad, obtenerCiudadInfo, normalizar } from "../data/territorioEspanol.js";
+import { buscarCodigoComunidadPorCiudad, obtenerCiudadInfo } from "../data/territorioEspanol.js";
 
 export interface IdealistaAutofill {
   buyPrice: number | null;
@@ -15,12 +15,18 @@ export interface IdealistaAutofill {
   ciudad: string | null;
   codigoComunidadAutonoma: number | null;
   /**
+   * Texto plano con las características del inmueble (bloque details-property_features limpiado).
+   * Para envío al LLM; no se pasa HTML crudo.
+   */
+  featuresText: string | null;
+  /**
    * Alquiler mensual estimado (mercado) en €/mes.
-   * Se calcula automáticamente desde informes Idealista cuando hay ciudad, m² y comunidad.
-   * Fórmula: sqm * rentEurPerSqm (redondeado)
+   * Viene del LLM (maxRent) cuando source es openai:v2.
    */
   estimatedRent?: number | null;
-  source: "idealista:v1";
+  /** Para compatibilidad con el front: mismo valor que estimatedRent cuando viene del LLM. */
+  alquilerMensual?: number | null;
+  source: "idealista:v1" | "openai:v2";
 }
 
 /**
@@ -29,6 +35,40 @@ export interface IdealistaAutofill {
  */
 function normalizeNumber(input: string): number {
   return Number(input.replace(/\./g, "").replace(",", "."));
+}
+
+/** Regex para bloques div.details-property_features (class puede tener más clases). */
+const RE_DETAILS_PROPERTY_FEATURES = /<div[^>]*class="[^"]*details-property_features[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+
+/** No incluir bloques que estén después de "Certificado energético" (solo Características básicas y Equipamiento). */
+const CORTE_CERTIFICADO = /Certificado energético/i;
+
+/**
+ * Extrae el HTML interno de los bloques div.details-property_features que aparecen
+ * antes de "Certificado energético", y los concatena.
+ */
+function extractFeaturesHtml(html: string): string {
+  const corte = html.match(CORTE_CERTIFICADO);
+  const htmlAntesCertificado = corte ? html.slice(0, corte.index!) : html;
+
+  const parts: string[] = [];
+  let m: RegExpExecArray | null;
+  RE_DETAILS_PROPERTY_FEATURES.lastIndex = 0;
+  while ((m = RE_DETAILS_PROPERTY_FEATURES.exec(htmlAntesCertificado)) !== null) {
+    parts.push(m[1].trim());
+  }
+  return parts.join(" ");
+}
+
+/**
+ * Limpia HTML a texto plano: elimina tags y normaliza espacios.
+ * Antes de enviar al LLM no se pasa HTML crudo.
+ */
+function htmlToFeaturesText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Busca el primer valor numérico asociado a una clave en un objeto (recursivo, profundidad limitada). */
@@ -197,14 +237,28 @@ export function extractIdealistaV1(html: string): IdealistaAutofill {
       if (ciudadMatch) {
         const ciudadExtraida = ciudadMatch[1].trim();
         
-        // Verificar que la ciudad extraída está en nuestra lista de ciudades
-        const ciudadInfo = obtenerCiudadInfo(ciudadExtraida);
-        
-        if (ciudadInfo) {
-          // Usar el nombre exacto de la ciudad encontrada (puede tener mayúsculas/acentos correctos)
-          ciudad = ciudadInfo.nombre;
+        // Si la ciudad contiene "/" (nombres bilingües, ej: "Alcoy / Alcoi"), probar ambas variantes
+        if (ciudadExtraida.includes('/')) {
+          const variantes = ciudadExtraida.split('/').map(v => v.trim());
+          
+          for (const variante of variantes) {
+            const ciudadInfo = obtenerCiudadInfo(variante);
+            if (ciudadInfo) {
+              // Usar el nombre exacto de la ciudad encontrada
+              ciudad = ciudadInfo.nombre;
+              break;
+            }
+          }
+        } else {
+          // Verificar que la ciudad extraída está en nuestra lista de ciudades
+          const ciudadInfo = obtenerCiudadInfo(ciudadExtraida);
+          
+          if (ciudadInfo) {
+            // Usar el nombre exacto de la ciudad encontrada (puede tener mayúsculas/acentos correctos)
+            ciudad = ciudadInfo.nombre;
+          }
         }
-        // Si no está en la lista, ciudad permanece null
+        // Si no está en la lista (ni ninguna variante), ciudad permanece null
       }
     }
   }
@@ -215,6 +269,14 @@ export function extractIdealistaV1(html: string): IdealistaAutofill {
     codigoComunidadAutonoma = buscarCodigoComunidadPorCiudad(ciudad);
   }
 
+  // 4) Bloque de características (details-property_features): extraer y limpiar a texto plano
+  const featuresHtml = extractFeaturesHtml(html);
+  // DEBUG temporal: contenido crudo del div antes de limpiar
+  if (featuresHtml) {
+    console.log("[DEBUG] featuresHtml (antes de limpiar):\n", featuresHtml);
+  }
+  const featuresText = featuresHtml ? htmlToFeaturesText(featuresHtml) : null;
+
   return {
     buyPrice,
     sqm,
@@ -222,6 +284,7 @@ export function extractIdealistaV1(html: string): IdealistaAutofill {
     banos,
     ciudad,
     codigoComunidadAutonoma,
+    featuresText,
     source: "idealista:v1"
   };
 }

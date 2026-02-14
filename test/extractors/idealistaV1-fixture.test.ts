@@ -36,6 +36,11 @@ describe('extractIdealistaV1 - HTMLs reales desde fixtures', () => {
       expect(result.ciudad).toBe('Dénia');
       expect(result.codigoComunidadAutonoma).toBe(10); // Comunitat Valenciana
       expect(result.source).toBe('idealista:v1');
+      // featuresText: bloque details-property_features limpiado (sin HTML)
+      expect(result.featuresText).toBeTruthy();
+      expect(typeof result.featuresText).toBe('string');
+      expect(result.featuresText).not.toMatch(/<[^>]+>/);
+      expect(result.featuresText).toMatch(/habitaciones|m²|baños|construidos/i);
       
       console.log('\n📊 Datos extraídos:');
       console.log(`   Precio: ${result.buyPrice} €`);
@@ -44,6 +49,7 @@ describe('extractIdealistaV1 - HTMLs reales desde fixtures', () => {
       console.log(`   Baños: ${result.banos}`);
       console.log(`   Ciudad: ${result.ciudad}`);
       console.log(`   Comunidad: ${result.codigoComunidadAutonoma}`);
+      console.log(`   featuresText (preview): ${result.featuresText?.slice(0, 80)}...`);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         // Archivo no existe, saltar test

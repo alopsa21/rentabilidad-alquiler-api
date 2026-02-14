@@ -522,4 +522,39 @@ describe('extractIdealistaV1', () => {
       expect(result.codigoComunidadAutonoma).toBe(9); // Cataluña
     });
   });
+
+  describe('bloque details-property_features (featuresText)', () => {
+    it('debe devolver featuresText null cuando no hay bloque details-property_features', () => {
+      const html = `
+        <html>
+          <head><title>Piso en Madrid</title></head>
+          <body>
+            <script id="__NEXT_DATA__" type="application/json">
+              {"props":{"pageProps":{"detail":{"price":150000,"size":80,"rooms":3,"bathrooms":2,"municipality":"Madrid"}}}}
+            </script>
+          </body>
+        </html>
+      `;
+      const result = extractIdealistaV1(html);
+      expect(result.featuresText).toBeNull();
+    });
+
+    it('debe extraer y limpiar featuresText sin HTML', () => {
+      const html = `
+        <html>
+          <head><title>Chalet en Dénia</title></head>
+          <body>
+            <div class="details-property_features">
+              <ul><li>Casa o chalet</li><li>266 m² construidos</li><li>5 habitaciones</li><li>4 baños</li><li>Segunda mano/buen estado</li></ul>
+            </div>
+          </body>
+        </html>
+      `;
+      const result = extractIdealistaV1(html);
+      expect(result.featuresText).toBeTruthy();
+      expect(result.featuresText).not.toMatch(/<[^>]+>/);
+      expect(result.featuresText).toMatch(/habitaciones/);
+      expect(result.featuresText).toMatch(/266/);
+    });
+  });
 });

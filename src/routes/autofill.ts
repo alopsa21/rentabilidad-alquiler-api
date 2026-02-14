@@ -57,6 +57,7 @@ async function autofillFromHtmlHandler(
     banos: null,
     ciudad: null,
     codigoComunidadAutonoma: null,
+    featuresText: null,
     source: 'idealista:v1' as const,
   };
 }
