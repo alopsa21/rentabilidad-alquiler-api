@@ -13,13 +13,21 @@ import { Decimal } from 'decimal.js';
  */
 
 /**
- * Schema base para valores monetarios.
- * 
- * Acepta number positivo o string convertible a número (>= 0)
- * y los transforma a Decimal para el motor.
+ * Schema para valores monetarios obligatorios (positivos).
+ */
+const decimalPositiveSchema = z.union([
+  z.number().positive(),
+  z.string().refine((val) => {
+    const num = Number(val);
+    return !isNaN(num) && num > 0;
+  }, { message: 'Debe ser un número válido' }),
+]).transform((val) => new Decimal(val));
+
+/**
+ * Schema para valores monetarios opcionales (>= 0, permite default 0).
  */
 const decimalSchema = z.union([
-  z.number().positive(),
+  z.number().min(0),
   z.string().refine((val) => {
     const num = Number(val);
     return !isNaN(num) && num >= 0;
@@ -40,10 +48,9 @@ const booleanSchema = z.boolean().optional();
 
 /**
  * Schema para plazo de hipoteca (años).
- * 
- * Debe ser un número entero positivo.
+ * Número entero >= 0 (0 cuando no hay hipoteca).
  */
-const plazoHipotecaSchema = z.number().int().positive().optional();
+const plazoHipotecaSchema = z.number().int().min(0).optional();
 
 /**
  * Schema completo para el input del motor de rentabilidad.
@@ -53,9 +60,9 @@ const plazoHipotecaSchema = z.number().int().positive().optional();
  */
 export const motorInputSchema = z.object({
   // Campos obligatorios
-  precioCompra: decimalSchema,
+  precioCompra: decimalPositiveSchema,
   codigoComunidadAutonoma: codigoComunidadAutonomaSchema,
-  alquilerMensual: decimalSchema,
+  alquilerMensual: decimalPositiveSchema,
 
   // Campos opcionales de compra
   notaria: decimalSchema.optional(),
@@ -77,6 +84,8 @@ export const motorInputSchema = z.object({
   electricidad: decimalSchema.optional(),
   gas: decimalSchema.optional(),
   internet: decimalSchema.optional(),
+  mantenimiento: decimalSchema.optional(),
+  periodoSinAlquilar: decimalSchema.optional(),
 
   // Inputs de financiación opcionales
   hayHipoteca: booleanSchema,
